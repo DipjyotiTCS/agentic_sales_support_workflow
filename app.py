@@ -10,11 +10,12 @@ from schemas import EmailIn, ChatOut, TraceStep
 from audit import new_run_id
 from db import DB_PATH
 import sqlite3
+from flask_cors import CORS
 
 load_dotenv()
 
 app = Flask(__name__)
-
+CORS(app)
 GRAPH = build_graph()
 
 # Flask 3.x removed `before_first_request`. Load CSV->SQLite at startup so the

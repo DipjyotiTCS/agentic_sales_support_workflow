@@ -114,7 +114,7 @@ Sincerely, [Support Agent Name] Elsevier Customer Support Team
         f"Prior analysis JSON:\n{analysis_json}\n\n"
         f"Sales rep follow-up message:\n{user_message}\n\n"
         "Now respond as the assistant with:\n"
-        f"A draft reply to the customer if appropriate using \n{sample_refund_email_template}\n\n"
+        f"Draft an email reply to the customer using \n{sample_refund_email_template}\n only if the customer wants to draft an email. Refer to \n{user_message}\n for better understanding.\n"
         "If key info is missing, ask focused questions.")
     else:
         prompt = (
