@@ -99,7 +99,7 @@ def chat():
         except Exception:
             pass
 
-    
+    print("Output:", result)
     # Build assistant conversational message for the UI chat thread
     assistant_message = result.get("summary","").strip()
     parts = []
@@ -118,6 +118,7 @@ def chat():
     conversation_id = new_conversation(run_id, result.get("route","other"), result.get("category","Other"), result.get("intent",""))
     add_message(conversation_id, "user", f"From: {email_in.sender_email}\nSubject: {subject}\n\n{body}", {"type":"email"})
     add_message(conversation_id, "assistant", assistant_message or "Processed.", {"type":"analysis"})
+    print("Populating payload")
     payload = {
         "category": result.get("category","Other"),
         "route": result.get("route","other"),
@@ -127,10 +128,15 @@ def chat():
         "offers": result.get("offers", []),
         "drafted_email": result.get("drafted_email"),
         "crm_opportunity": result.get("crm_opportunity"),
+        "customer_name": result.get("customer_name", ""),
+        "product_name": result.get("product_name", ""),
+        "purchase_order": result.get("purchaseOrderNumber", ""),
+        "articleDoi": result.get("articleDoi", ""),
         "trace": trace,
         "conversation_id": conversation_id,
         "assistant_message": assistant_message,
     }
+    print("Populated payload", payload)
     # Validate output schema (guardrail)
     out = ChatOut(**payload)
     return jsonify(out.model_dump())

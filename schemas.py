@@ -39,3 +39,7 @@ class ChatOut(BaseModel):
     trace: List[TraceStep]
     conversation_id: Optional[str] = None
     assistant_message: Optional[str] = None
+    customer_name: Optional[str] = None
+    product_name: Optional[str] = None
+    purchase_order: Optional[str] = None
+    articleDoi: Optional[str] = None

@@ -713,12 +713,14 @@ def refund_validation_node(state: Dict[str, Any]) -> Dict[str, Any]:
         purchaseOrderNumber = state['purchaseOrderNumber']
         cust = _sql_fetchone("SELECT * FROM customers WHERE email = ? LIMIT 1", customerEmailId)
         customer_id = cust["customer_id"]
+        name = cust["name"]
         order = _sql_fetchone("SELECT * FROM orders WHERE order_number = ? AND customer_id = ? LIMIT 1", purchaseOrderNumber, customer_id)
         product_id = order["product_id"]
         order_status = order["status"]
         order_amount = order["total_amount"]
         if order_status != "cancelled":
             product = _sql_fetchone("SELECT * FROM products WHERE product_id = ? LIMIT 1", product_id)
+            product_name = product["name"]
             is_refundable = product["is_refundable"]
             validation_result = f"Order found with status {order_status}. Product refundable: {is_refundable}."
         log_step(state["run_id"], "user_authetication", {"email": customerEmailId}, {"purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "rationale": validation_result}, 1.0, ["Calculated from DB"])
@@ -728,7 +730,7 @@ def refund_validation_node(state: Dict[str, Any]) -> Dict[str, Any]:
         validation_result = "User authetication failed. Could not validate refund eligibility due to missing or invalid data."
         order_amount = 0.0
         log_step(state["run_id"], "user_authetication", {"email": customerEmailId}, {"purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "rationale": validation_result}, 0.3, ["Calculated from DB"])
-    return _merged(state, {"customerEmailId": customerEmailId, "purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount})
+    return _merged(state, {"customerEmailId": customerEmailId, "purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "customer_name": name, "product_name": product_name})
 
 def create_refund_case_node(state: Dict[str, Any]) -> Dict[str, Any]:
     #Create a case with OSC
@@ -775,6 +777,11 @@ def calculate_refund_node(state: Dict[str, Any]) -> Dict[str, Any]:
         return _merged(state, {"is_refundable": is_refundable, "refund_amount": refund_amount, "message": message})
 
 def refund_info_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    is_refundable = state['is_refundable']
+    customerEmailId = state['customerEmailId']
+    if is_refundable:
+        info_message = "Notification email sent to example@example.com for refund approval."
+        log_step(state["run_id"], "refund_info_node", {"email": customerEmailId}, {"rationale": info_message}, 1.0, ["LLM"])   
     return _merged(state, {"avg_confidence": "Hello"})
 
 def build_access_graph():

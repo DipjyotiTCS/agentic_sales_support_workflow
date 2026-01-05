@@ -91,22 +91,41 @@ def respond(conversation_id: str, user_message: str, analysis: Dict[str, Any], e
         "route": analysis.get("route"),
         "intent": analysis.get("intent"),
         "summary": analysis.get("summary"),
+        "product_name": analysis.get("product_name"),
+        "customer_name": analysis.get("customer_name"),
         "recommendations": analysis.get("recommendations", []),
         "offers": analysis.get("offers", []),
         "drafted_email": analysis.get("drafted_email"),
+        "purchase_order": analysis.get("purchase_order"),
+        "articleDoi": analysis.get("articleDoi"),
     }, ensure_ascii=False)
 
-    prompt = (
+    if(analysis.get("intent") == "Refund request") :
+        sample_refund_email_template = f"""
+Subject: Re: Refund Request – [product_name] Order [purchase_order]
+Dear [customer_name], Thank you for contacting Elsevier. We have received your refund request for the [product_name] article (Purchase Order [purchase_order], DOI: [articleDoi]).
+Our team is reviewing your request and we aim to complete the process within 5 business days. We will notify you once the refund has been processed or if we need any additional information.
+Thank you for your patience and understanding.
+Sincerely, [Support Agent Name] Elsevier Customer Support Team
+"""
+
+        prompt = (
         f"Customer email (for context):\nFrom: {email.get('sender_email')}\nSubject: {email.get('subject')}\nBody: {email.get('body')}\n\n"
         f"Prior analysis JSON:\n{analysis_json}\n\n"
-        f"Knowledge Base findings (top matches):\n{kb_block or 'No KB matches found.'}\n\n"
         f"Sales rep follow-up message:\n{user_message}\n\n"
         "Now respond as the assistant with:\n"
-        "1) A short updated understanding\n"
-        "2) The next best actions\n"
-        "3) A draft reply to the customer if appropriate\n"
-        "If key info is missing, ask focused questions."
-    )
+        f"A draft reply to the customer if appropriate using \n{sample_refund_email_template}\n\n"
+        "If key info is missing, ask focused questions.")
+    else:
+        prompt = (
+        f"Customer email (for context):\nFrom: {email.get('sender_email')}\nSubject: {email.get('subject')}\nBody: {email.get('body')}\n\n"
+        f"Prior analysis JSON:\n{analysis_json}\n\n"
+        f"Sales rep follow-up message:\n{user_message}\n\n"
+        "Now respond as the assistant with:\n"
+        f"Best appropriate answer.\n"
+        "If key info is missing, ask focused questions.")
+
+    
     resp = model.invoke([{ "role": "system", "content": sys }, { "role": "user", "content": prompt }])
     content = getattr(resp, 'content', str(resp))
     return {"message": content, "kb_hits": kb_hits}
