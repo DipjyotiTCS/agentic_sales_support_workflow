@@ -1,0 +1,11 @@
+product_id,name,description,category,base_price,features,is_refundable,refund_window_days,embedding,created_at
+ce2d3cfa-0ab9-4063-88b0-056afa6b1898,Product 1,Description of product 1,Article,416.96,,TRUE,7,,2025-01-28T09:07:43.732177
+3c7ce16e-eed5-4c82-bfe9-e4024cb3c474,Product 2,Description of product 2,Article,286.12,,TRUE,30,,2025-01-12T09:07:43.732177
+991a0025-5ec1-482c-b4a6-b3063aaa6fc7,Product 3,Description of product 3,Article,319.5,,FALSE,30,,2025-03-13T09:07:43.732177
+60809f7f-1ca6-4444-b385-e13271753f87,Product 4,Description of product 4,Service,39.74,,TRUE,30,,2025-05-19T09:07:43.732177
+0c83d121-63a8-4ebf-bd35-5d55c0872fd3,Product 5,Description of product 5,Service,90.74,,TRUE,7,,2025-05-29T09:07:43.732177
+23ab0020-5789-4413-9607-56173d7e19d4,Product 6,Description of product 6,Subscription,491.02,,TRUE,14,,2025-03-19T09:07:43.732177
+cfdda2d1-2cd4-464f-9a3e-98b3752142e4,Product 7,Description of product 7,Service,146.69,,TRUE,7,,2025-02-05T09:07:43.732177
+7384bd3c-6b33-4e0d-bfa4-f4c8ee02b19f,Product 8,Description of product 8,Service,198.6,,FALSE,7,,2025-07-08T09:07:43.732177
+2825b597-81dd-41e0-963c-7ded80798572,Product 9,Description of product 9,Service,108.09,,FALSE,30,,2025-10-10T09:07:43.732177
+8db8cb8f-5b48-474a-9ca5-44461522e037,Product 10,Description of product 10,Article,205.65,,TRUE,7,,2025-10-12T09:07:43.732177

@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Agentic Sales & Support Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121a2e;
+      --panel2:#0f1628;
+      --text:#e7eaf3;
+      --muted:#a7b0c6;
+      --border:rgba(255,255,255,0.08);
+      --shadow:0 12px 30px rgba(0,0,0,0.35);
+      --accent:#6ee7ff;
+      --good:#49f2a7;
+      --warn:#ffd166;
+      --bad:#ff6b6b;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 15% 10%, rgba(110,231,255,0.18), transparent 60%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(73,242,167,0.14), transparent 55%),
+                  radial-gradient(700px 500px at 50% 100%, rgba(255,209,102,0.10), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+    }
+    a{ color: var(--accent); }
+    .wrap{ max-width:1200px; margin:0 auto; padding:18px; }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:12px 14px; border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      border-radius:16px; box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      margin-bottom:14px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .dot{ width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 16px rgba(110,231,255,0.65); }
+    .title{ font-weight:700; letter-spacing:0.2px; }
+    .subtitle{ color:var(--muted); font-size:12px; }
+    .grid{ display:grid; grid-template-columns: 1.2fr 0.8fr; gap:14px; }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    .card h3{ margin:0 0 10px; font-size:14px; letter-spacing:0.2px; }
+    .help{ color:var(--muted); font-size:12px; margin-top:-2px; }
+    label{ font-size:12px; color:var(--muted); }
+    input, textarea, button{
+      width:100%;
+      background: rgba(10,14,26,0.65);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline:none;
+    }
+    textarea{ min-height: 170px; resize: vertical; }
+    input:focus, textarea:focus{
+      border-color: rgba(110,231,255,0.35);
+      box-shadow: 0 0 0 4px rgba(110,231,255,0.08);
+    }
+    .row{ display:grid; gap:10px; }
+    .actions{ display:flex; gap:10px; }
+    button{
+      cursor:pointer;
+      background: linear-gradient(180deg, rgba(110,231,255,0.22), rgba(110,231,255,0.10));
+      border: 1px solid rgba(110,231,255,0.35);
+      font-weight:600;
+    }
+    button.secondary{
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight:600;
+    }
+    button:disabled{ opacity:0.55; cursor:not-allowed; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      font-size:12px; color:var(--muted);
+    }
+    .pill strong{ color: var(--text); }
+    .kpi{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .resultTabs{ display:flex; gap:8px; margin:10px 0 12px; }
+    .tab{
+      padding:8px 10px; border-radius:12px; border:1px solid var(--border);
+      background: rgba(255,255,255,0.03); color: var(--muted); cursor:pointer; font-size:12px;
+    }
+    .tab.active{
+      color: var(--text);
+      border-color: rgba(110,231,255,0.35);
+      box-shadow: 0 0 0 4px rgba(110,231,255,0.06);
+    }
+    .panel{ display:none; }
+    .panel.active{ display:block; }
+    .step{
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.10);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .stepHead{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .stepName{ font-weight:700; font-size:13px; letter-spacing:0.2px; }
+    .conf{
+      display:flex; align-items:center; gap:10px;
+      min-width: 220px;
+    }
+    .bar{
+      position:relative; flex:1;
+      height: 8px; border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,0.06);
+    }
+    .bar > span{
+      display:block; height:100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--bad), var(--warn), var(--good));
+    }
+    .badge{
+      font-size:12px; font-weight:700;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      min-width: 70px;
+      text-align:center;
+    }
+    .reason{ color: var(--text); font-size:13px; line-height:1.35; }
+    .evidence{ margin-top:8px; color: var(--muted); font-size:12px; }
+    .evidence ul{ margin:6px 0 0 18px; padding:0; }
+    .mono{
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: rgba(231,234,243,0.92);
+      background: rgba(0,0,0,0.18);
+      border:1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .small{ color: var(--muted); font-size:12px; }
+    .toast{
+      position: fixed; right: 18px; bottom: 18px;
+      max-width: 420px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(18,26,46,0.95);
+      box-shadow: var(--shadow);
+      display:none;
+    }
+  
+    .chatThread{
+      margin-top:12px;
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+      border-radius:16px;
+      padding:12px;
+      min-height:160px;
+      max-height:360px;
+      overflow:auto;
+    }
+    .bubble{
+      max-width: 86%;
+      padding:10px 12px;
+      border-radius:14px;
+      margin:8px 0;
+      white-space:pre-wrap;
+      line-height:1.35;
+      border:1px solid var(--border);
+    }
+    .bubble.user{
+      margin-left:auto;
+      background: rgba(110,231,255,0.10);
+    }
+    .bubble.assistant{
+      margin-right:auto;
+      background: rgba(255,255,255,0.04);
+    }
+    .chatInputRow{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .chatInputRow .input{ flex:1; }
+
+  
+    /* --- Chat input size fix (minimal change) --- */
+    .chatInputRow textarea.input{
+      min-height: 90px;
+      resize: vertical;
+    }
+    .chatInputRow .sendSmall{
+      width: auto;
+      padding: 8px 14px;
+      white-space: nowrap;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="dot"></div>
+        <div>
+          <div class="title">Agentic Sales & Support</div>
+          <div class="subtitle">Classification → Route → (Sales/Support) KB → Intent → Ticket → Actions • Traceable & explainable</div>
+        </div>
+      </div>
+      <div class="pill"><strong>KB-first intent</strong> with auditing</div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Email input</h3>
+        <div class="help">Paste sender, subject, and body. The system classifies first, then routes and uses KB for intent detection.</div>
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label>Sender email</label>
+            <input id="sender" placeholder="customer@example.com" />
+          </div>
+          <div>
+            <label>Subject</label>
+            <input id="subject" placeholder="e.g., Need pricing for X bundle" />
+          </div>
+          <div>
+            <label>Body</label>
+            <textarea id="body" placeholder="Paste the email body here..."></textarea>
+          </div>
+          <div class="actions">
+            <button id="runBtn">Analyze & Run</button>
+            <button id="resetBtn" class="secondary" type="button">Reset</button>
+          </div>
+          <div class="small" id="status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Knowledge Base ingestion</h3>
+        <div class="help">Upload a PDF. It will be chunked, embedded, and stored in SQLite for retrieval.</div>
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <input id="kbFile" type="file" accept="application/pdf" />
+          </div>
+          <button id="kbBtn" class="secondary" type="button">Upload PDF to KB</button>
+          <div class="small" id="kbStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="card" style="margin-top:14px;">
+      <h3>Conversation</h3>
+      <div class="muted" style="margin-top:-6px;">Ask follow-up questions or provide missing details. The assistant will use the previous analysis + KB context.</div>
+      <div class="chatThread" id="chatThread"></div>
+      <div class="chatInputRow">
+        <textarea
+          id="followupInput"
+          class="input"
+          placeholder="Type additional info (order id, product, budget, timeline, etc.)…"
+        ></textarea>
+        <button class="btn sendSmall" id="sendFollowupBtn">Send</button>
+      </div>
+    </div>
+
+
+    <div class="card" style="margin-top:14px;">
+      <h3>Result</h3>
+      <div class="kpi" id="kpi"></div>
+
+      <div class="resultTabs">
+        <div class="tab active" data-tab="summary">Summary</div>
+        <div class="tab" data-tab="trace">Trace</div>
+        <div class="tab" data-tab="raw">Raw JSON</div>
+      </div>
+
+      <div class="panel active" id="panel-summary">
+        <div class="mono" id="summaryBox">Run an email to see results.</div>
+      </div>
+
+      <div class="panel" id="panel-trace">
+        <div id="traceBox"></div>
+      </div>
+
+      <div class="panel" id="panel-raw">
+        <div class="mono" id="rawBox"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

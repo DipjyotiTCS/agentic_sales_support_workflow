@@ -1,0 +1,11 @@
+policy_id,policy_name,customer_tier,max_discount_percentage,min_margin_percentage,approval_threshold,policy_rules,active,created_at
+1dc83eb7-673d-4cac-877d-fe50748ef513,Policy 1,enterprise,5.85,2.66,466.53,,TRUE,2025-02-10T09:07:43.732177
+ccdb2fbb-8e05-474e-8984-39efa2dd5629,Policy 2,premium,35.25,26.21,541.48,,TRUE,2025-05-02T09:07:43.732177
+b614aafa-df2c-48c7-92f9-9810d0ca2957,Policy 3,standard,30.59,13.41,980.98,,TRUE,2025-11-14T09:07:43.732177
+82cf0b21-0673-4912-9554-201f3b35511f,Policy 4,premium,36.1,19.52,141.29,,TRUE,2025-07-06T09:07:43.732177
+beb2d3c4-113d-4d3c-a261-322fd7e0928c,Policy 5,standard,27.54,28.23,613.65,,TRUE,2025-01-05T09:07:43.732177
+909cda45-929a-4d42-8fac-6b32f39234b4,Policy 6,premium,8.57,6.78,922.29,,TRUE,2025-03-25T09:07:43.732177
+694b6a5c-a8e8-4c47-94b3-8aafdb4f25fb,Policy 7,enterprise,46.73,28.25,911.11,,TRUE,2025-02-24T09:07:43.732177
+7022b233-b486-4c29-91be-9cfc10e304d1,Policy 8,premium,30.6,27.81,446.26,,TRUE,2025-10-22T09:07:43.732177
+9a060831-6ab9-49d8-86e6-ca534ea9e2e8,Policy 9,premium,8.22,17.02,342.74,,TRUE,2025-04-30T09:07:43.732177
+e526a644-5a3a-46c4-bd76-2984ded8645e,Policy 10,standard,48.11,3.23,761.64,,TRUE,2025-09-10T09:07:43.732177
