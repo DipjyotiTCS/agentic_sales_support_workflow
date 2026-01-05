@@ -104,14 +104,16 @@ def support_route_node(state: Dict[str, Any]) -> Dict[str, Any]:
     route = state.get("intent","Other support")
     cat = state.get("category","Other")
     conf = 0.9 if route in ("Access issue around product","Refund request","Technical issue","Account verification","Need more info from customer","Other support") else 0.3
-    log_step(state["run_id"], "route", {"category":cat}, {"route":route}, conf, [f"mapped {cat} -> {route}"])
+    rationale = f"Mapped from intent {route}"
+    log_step(state["run_id"], "route", {"category":cat}, {"route":route, "rationale":rationale}, conf, [f"mapped {cat} -> {route}"])
     return _merged(state, {"route": route, "route_confidence": 1.0})
 
 def sales_route_node(state: Dict[str, Any]) -> Dict[str, Any]:
     cat = state.get("category","Other")
     route = "sales" if cat == "Sales Type" else "support" if cat == "Support Type" else "other"
     conf = 0.9 if route in ("sales","support") else 0.6
-    log_step(state["run_id"], "route", {"category":cat}, {"route":route}, conf, [f"mapped {cat} -> {route}"])
+    rationale = f"Mapped from intent {route}"
+    log_step(state["run_id"], "route", {"category":cat}, {"route":route, "rationale":rationale}, conf, [f"mapped {cat} -> {route}"])
     return _merged(state, {"route": route, "route_confidence": conf})
 
 # --- node: kb retrieve (KB-first) ---
@@ -671,6 +673,8 @@ Return JSON with:
 - purchaseOrderNumber: identified Purchase Order Number
 - articleDoi: identified Article DOI
 - refundReason: identified Reason for Refund
+- confidence: 0..1
+- rationale: short and explicite reason to support your choice
 In case you are not able to find out any of the above mentioned information fill the respective JSON field with text unidentified.
 
 Email:
@@ -694,11 +698,12 @@ Body: {email['body']}
         articleDoi = data.get("articleDoi","unidentified")
         refundReason = data.get("refundReason","unidentified")
         refund_conf = float(data.get("confidence", 0.6))
-        refund_rationale = str(data.get("rationale",""))
+        refund_rationale = data.get("rationale","unidentified")
+        print("Extracted values", refund_rationale)
     except Exception:
-        intent, conf, rationale = "General", 0.55, "Could not parse model output; defaulted."
+        intent, refund_conf, rationale = "General", 0.3, "Could not parse model output; defaulted."
 
-    log_step(state["run_id"], "data_extraction", {"email": email}, {"refund_conf": refund_conf, "rationale": refund_rationale}, refund_conf, ["LLM + KB"])
+    log_step(state["run_id"], "data_extraction", {"email": email}, {"refund_conf": refund_conf, "rationale": refund_rationale}, refund_conf, ["LLM + DB"])
     return _merged(state, {"customerEmailId": customerEmailId, "purchaseOrderNumber": purchaseOrderNumber, "articleDoi": articleDoi, "refundReason": refundReason, "refund_conf": refund_conf, "refund_rationale": refund_rationale})
 
 def refund_validation_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -715,11 +720,14 @@ def refund_validation_node(state: Dict[str, Any]) -> Dict[str, Any]:
         if order_status != "cancelled":
             product = _sql_fetchone("SELECT * FROM products WHERE product_id = ? LIMIT 1", product_id)
             is_refundable = product["is_refundable"]
+            validation_result = f"Order found with status {order_status}. Product refundable: {is_refundable}."
+        log_step(state["run_id"], "user_authetication", {"email": customerEmailId}, {"purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "rationale": validation_result}, 1.0, ["Calculated from DB"])
     except Exception as e:
         print("Exception occured", e)
-        customerEmailId, customer_id, product_id = "General", 0.55, "Could not parse model output; defaulted."
-
-    log_step(state["run_id"], "user_authetication", {"email": customerEmailId}, {"purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount}, 1.0, ["LLM + KB"])
+        customerEmailId, customer_id, product_id = "General", 0.3, "Could not parse model output; defaulted."
+        validation_result = "User authetication failed. Could not validate refund eligibility due to missing or invalid data."
+        order_amount = 0.0
+        log_step(state["run_id"], "user_authetication", {"email": customerEmailId}, {"purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "rationale": validation_result}, 0.3, ["Calculated from DB"])
     return _merged(state, {"customerEmailId": customerEmailId, "purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount})
 
 def create_refund_case_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -729,7 +737,8 @@ def create_refund_case_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print("Value of is refundable", is_refundable)
     if is_refundable:
         unique_id = uuid.uuid4().hex
-        log_step(state["run_id"], "OSC_case_creation", {"email": customerEmailId}, {"oracle_service_ticket_number": unique_id}, 1.0, ["LLM + KB"])
+        case_node_info = f"Created refund case with OSC. Case ID: {unique_id} for email {customerEmailId}."
+        log_step(state["run_id"], "OSC_case_creation", {"email": customerEmailId}, {"oracle_service_ticket_number": unique_id, "rationale": case_node_info}, 1.0, ["Created via OSC"])
         return _merged(state, {"oracle_service_ticket_number": unique_id})
 
 def calculate_refund_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -753,16 +762,16 @@ def calculate_refund_node(state: Dict[str, Any]) -> Dict[str, Any]:
             print("Date difference", date_diff)
             if refund_window_days >= date_diff:
                 refund_amount = (total_price * refund_percentage)/100
-                message = "Allowed refund amount is ", refund_amount
+                message = "Allowed refund amount is " + str(refund_amount)
             else:
                is_refundable = False
                refund_amount = 0.0
                message = "Refund cannot be processed as refund window has passed."     
-            log_step(state["run_id"], "refund_calculation", {"email": customerEmailId}, {"refund_amount": refund_amount, "message": message}, 1.0, ["LLM + KB"])   
+            log_step(state["run_id"], "refund_calculation", {"email": customerEmailId}, {"refund_amount": refund_amount, "rationale": message}, 1.0, ["Calculated via DB"])   
         except Exception as e:
             print("Exception occured", e)
             purchaseOrderNumber, customer_id, product_id = "General", 0.55, "Could not parse model output; defaulted."
-            log_step(state["run_id"], "OSC_case_creation", {"email": customerEmailId}, {"refund_amount": 0.0, "message": "Could not process refund. Please check manually."}, 1.0, ["LLM + KB"])
+            log_step(state["run_id"], "OSC_case_creation", {"email": customerEmailId}, {"refund_amount": 0.0, "rationale": "Could not process refund. Please check manually."}, 0.3, ["Calculated via DB"])
         return _merged(state, {"is_refundable": is_refundable, "refund_amount": refund_amount, "message": message})
 
 def refund_info_node(state: Dict[str, Any]) -> Dict[str, Any]:
