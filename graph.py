@@ -9,6 +9,8 @@ import json
 import re
 import uuid
 from datetime import datetime, date
+from query import query_kb
+from answer_generator import generate_answer
 
 
 
@@ -109,12 +111,15 @@ def support_route_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return _merged(state, {"route": route, "route_confidence": 1.0})
 
 def sales_route_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    route = state.get("intent","Other sales")
     cat = state.get("category","Other")
-    route = "sales" if cat == "Sales Type" else "support" if cat == "Support Type" else "other"
-    conf = 0.9 if route in ("sales","support") else 0.6
+    conf = 0.9 if route in ("Specific product related inquiry","Customer requirement possible products","Best price offer and bundling related query",
+    "Order related query",
+    "Need more info from customer",
+    "Other sales") else 0.3
     rationale = f"Mapped from intent {route}"
     log_step(state["run_id"], "route", {"category":cat}, {"route":route, "rationale":rationale}, conf, [f"mapped {cat} -> {route}"])
-    return _merged(state, {"route": route, "route_confidence": conf})
+    return _merged(state, {"route": route, "route_confidence": 1.0})
 
 # --- node: kb retrieve (KB-first) ---
 def kb_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -124,7 +129,6 @@ def kb_node(state: Dict[str, Any]) -> Dict[str, Any]:
     conf = 0.7 if ctx else 0.3
     log_step(state["run_id"], "kb_retrieve", {"query":query[:500]}, {"num_chunks":len(ctx)}, conf, ["top-k chunk retrieval"])
     return _merged(state, {"kb_context": ctx, "kb_confidence": conf})
-
 
 # --- node: KB retrieve (sales/support) ---
 def sales_kb_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -138,10 +142,13 @@ def sales_kb_node(state: Dict[str, Any]) -> Dict[str, Any]:
 def support_kb_node(state: Dict[str, Any]) -> Dict[str, Any]:
     email = state["email"]
     query = f"[SUPPORT]\nSubject: {email['subject']}\nBody: {email['body']}"
-    ctx = retrieve_context(query, k=5)
-    conf = 0.75 if ctx else 0.35
-    log_step(state["run_id"], "support_kb_retrieve", {"query": query[:500]}, {"num_chunks": len(ctx)}, conf, ["KB top-k retrieval (support)"])
-    return _merged(state, {"kb_context": ctx, "kb_confidence": conf})
+
+    hits = query_kb(query, top_k=5)
+    answer = generate_answer(query, hits)
+
+    conf = 0.75 if answer else 0.35
+    log_step(state["run_id"], "support_kb_retrieve", {"query": query[:500]}, {"num_chunks": len(answer)}, conf, ["KB top-k retrieval (support)"])
+    return _merged(state, {"kb_context": answer, "kb_confidence": conf})
 
 # --- node: intent identification (must use KB findings in LLM call) ---
 def sales_intent_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -713,7 +720,7 @@ def refund_validation_node(state: Dict[str, Any]) -> Dict[str, Any]:
         purchaseOrderNumber = state['purchaseOrderNumber']
         cust = _sql_fetchone("SELECT * FROM customers WHERE email = ? LIMIT 1", customerEmailId)
         customer_id = cust["customer_id"]
-        name = cust["name"]
+        customer_name = cust["name"]
         order = _sql_fetchone("SELECT * FROM orders WHERE order_number = ? AND customer_id = ? LIMIT 1", purchaseOrderNumber, customer_id)
         product_id = order["product_id"]
         order_status = order["status"]
@@ -724,13 +731,15 @@ def refund_validation_node(state: Dict[str, Any]) -> Dict[str, Any]:
             is_refundable = product["is_refundable"]
             validation_result = f"Order found with status {order_status}. Product refundable: {is_refundable}."
         log_step(state["run_id"], "user_authetication", {"email": customerEmailId}, {"purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "rationale": validation_result}, 1.0, ["Calculated from DB"])
+        return _merged(state, {"customerEmailId": customerEmailId, "purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "customer_name": customer_name, "product_name": product_name})
     except Exception as e:
         print("Exception occured", e)
         customerEmailId, customer_id, product_id = "General", 0.3, "Could not parse model output; defaulted."
         validation_result = "User authetication failed. Could not validate refund eligibility due to missing or invalid data."
         order_amount = 0.0
+        product_name = "unknown"
         log_step(state["run_id"], "user_authetication", {"email": customerEmailId}, {"purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "rationale": validation_result}, 0.3, ["Calculated from DB"])
-    return _merged(state, {"customerEmailId": customerEmailId, "purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount, "customer_name": name, "product_name": product_name})
+        return _merged(state, {"customerEmailId": customerEmailId, "purchaseOrderNumber": purchaseOrderNumber, "customer_id": customer_id, "product_id": product_id, "is_refundable": is_refundable, "order_amount": order_amount})
 
 def create_refund_case_node(state: Dict[str, Any]) -> Dict[str, Any]:
     #Create a case with OSC
@@ -804,18 +813,70 @@ def build_other_graph():
     rg = StateGraph(dict)
     return rg.compile
 
+def build_product_inquiry_graph():
+    product_inquiry = StateGraph(dict)
+    product_inquiry.add_node("support_kb_node", support_kb_node)
+    product_inquiry.add_node("formulate_response", formulate_response)
+
+    product_inquiry.set_entry_point("support_kb_node")
+
+    product_inquiry.add_edge("support_kb_node", "formulate_response")
+    product_inquiry.add_edge("formulate_response", END)
+    return product_inquiry.compile()
+
+def formulate_response(state: Dict[str, Any]) -> Dict[str, Any]:
+    return _merged(state, {"kb_context": "ctx", "kb_confidence": "conf"})
+
+def build_customer_requirement_graph():
+    rg = StateGraph(dict)
+    return rg.compile
+
+def build_best_price_graph():
+    rg = StateGraph(dict)
+    return rg.compile
+
+def build_order_quiry_graph():
+    rg = StateGraph(dict)
+    return rg.compile
+
+def build_other_sales_graph():
+    rg = StateGraph(dict)
+    return rg.compile
+
 def build_sales_graph():
     """Sales subgraph: KB -> intent -> ticket -> fulfillment."""
+    product_inquiry_graph = build_product_inquiry_graph()
+    customer_requirement_graph = build_customer_requirement_graph()
+    best_price_graph = build_best_price_graph()
+    order_quiry_graph = build_order_quiry_graph()
+    more_info_graph = build_more_info_graph()
+    other_sales_graph = build_other_sales_graph()
     sg = StateGraph(dict)
-    sg.add_node("sales_kb", sales_kb_node)
-    sg.add_node("sales_intent", sales_intent_node)
-    sg.add_node("ticket", ticket_node)
-    sg.add_node("sales", sales_node)
-    sg.set_entry_point("sales_kb")
-    sg.add_edge("sales_kb", "sales_intent")
-    sg.add_edge("sales_intent", "ticket")
-    sg.add_edge("ticket", "sales")
-    sg.add_edge("sales", END)
+    sg.add_node("route", sales_route_node)
+
+    # Subgraphs as nodes
+    sg.add_node("product_inquiry", product_inquiry_graph)
+    sg.add_node("customer_requirement", customer_requirement_graph)
+    sg.add_node("best_price", best_price_graph)
+    sg.add_node("order_quiry", order_quiry_graph)
+    sg.add_node("moreinfo", more_info_graph)
+    sg.add_node("other", other_sales_graph)
+
+    sg.set_entry_point("route")
+
+    # Select which subgraph to run based on support intent-derived route
+    def _after_route(state: Dict[str, Any]) -> str:
+        return state.get("route", "Other sales")
+
+    sg.add_conditional_edges(
+        "route",
+        _after_route,
+        {"Specific product related inquiry": "product_inquiry", "Customer requirement possible products": "customer_requirement", 
+         "Best price offer and bundling related query": "best_price", "Order related query": "order_quiry",
+        "Need more info from customer": "moreinfo", "Other sales": "other"},
+    )
+
+    sg.add_edge("route", END)
     return sg.compile()
 
 def build_support_graph():
@@ -837,8 +898,6 @@ def build_support_graph():
     sg.add_node("moreinfo", more_info_graph)
     sg.add_node("other", other_graph)
 
-    
-
     sg.set_entry_point("route")
 
     # Select which subgraph to run based on support intent-derived route
@@ -848,8 +907,8 @@ def build_support_graph():
     sg.add_conditional_edges(
         "route",
         _after_route,
-        {"Access issue around product": "access", "Refund request": "refund", "Technical issue": "technical", "Account verification": "account",
-          "Account verification": "account", "Need more info from customer": "moreinfo", "Other support": "other"},
+        {"Access issue around product": "access", "Refund request": "refund", "Technical issue": "technical", 
+         "Account verification": "account", "Need more info from customer": "moreinfo", "Other support": "other"},
     )
 
     sg.add_edge("route", END)

@@ -11,12 +11,26 @@ from audit import new_run_id
 from db import DB_PATH
 import sqlite3
 from flask_cors import CORS
+from ingest import ingest_pdf_folder
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 GRAPH = build_graph()
+
+_startup_ingest = None
+
+def bootstrap():
+    global _startup_ingest
+    auto = os.environ.get("AUTO_INGEST", "true").strip().lower() == "true"
+    pdf_dir = os.environ.get("KB_PDF_DIR", "./kb_pdfs")
+    if not auto:
+        _startup_ingest = {"auto_ingest": False, "pdf_dir": pdf_dir, "message": "AUTO_INGEST=false; skipped startup ingestion."}
+        return
+    _startup_ingest = ingest_pdf_folder(pdf_dir)
+
+bootstrap()
 
 # Flask 3.x removed `before_first_request`. Load CSV->SQLite at startup so the
 # demo is deterministic.
@@ -141,7 +155,6 @@ def chat():
     # Validate output schema (guardrail)
     out = ChatOut(**payload)
     return jsonify(out.model_dump())
-
 
 
 @app.post("/api/conversation/message")
